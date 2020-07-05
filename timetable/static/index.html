@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>首页</title>
+    <script src="lib/jquery-1.12.4.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/echarts@4.7.0/dist/echarts.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/echarts@4.7.0/dist/extension/bmap.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/echarts@4.7.0/dist/extension/dataTool.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/echarts@4.7.0/map/js/china.js"></script>
+    <script src="lib/layui/layui.js"></script>
+    <link rel="stylesheet" href="lib/layui/css/layui.css">
+
+</head>
+<body>
+<div class="layui-main" style="">
+    <div class="layui-col-md12"
+         style="line-height: 40px; background: #009788; text-align: center; font-weight: bolder; font-size: 20px;margin-bottom: 20px; color: #fff;">
+        课表合理性评价系统
+    </div>
+    <div class="layui-col-md12">
+        <select name="" id="sc_pro" class="layui-select" style="width: 300px;">
+            <option value="">选择专业</option>
+        </select>
+        <button class="layui-btn t1_btn">查询</button>
+    </div>
+    <div class="layui-col-md12">
+        <div class="layui-col-md12" style="height: 400px;" id="t1"></div>
+    </div>
+    <div class="layui-col-md12" style="line-height: 20px; background: #d2d2d2; margin-bottom: 10px;"> &nbsp;</div>
+    <div class="layui-col-md12">
+        <select name="" id="sc_wk" class="layui-select" style="width: 300px;">
+            <option value="">选择周</option>
+        </select>
+        <select name="" id="sc_class" class="layui-select" style="width: 300px;">
+            <option value="">选择班级</option>
+        </select>
+        <button class="layui-btn t2_btn">查询</button>
+    </div>
+    <div class="layui-col-md12">
+        <div class="layui-col-md12" style="height: 400px;" id="t2"></div>
+    </div>
+</div>
+
+
+</body>
+</html>
+<script>
+    $(function () {
+        //获取基础数据
+        $.get('/getdatas/', function (res) {
+
+            // 处理专业选择
+            var pros = '<option value="">选择专业</option>'
+            $.each(res.pro, function (k, v) {
+                pros = pros + '<option value="' + v.pro + '">' + v.pro + '</option>'
+            })
+            $('#sc_pro').html('').append(pros)
+
+            // 周处理
+            var wks = '<option value="">选择周</option>'
+            $.each(res.wk, function (k, v) {
+                wks = wks + '<option value="' + v.wk + '">' + v.wk + '</option>'
+            })
+            $('#sc_wk').html('').append(wks)
+
+            // 班级处理
+            var pro_class = '<option value="">选择专业班级</option>'
+            $.each(res.pro_class , function (k, v) {
+                pro_class  = pro_class  + '<option value="' + v.pro_class + '">' + v.pro_class  + '</option>'
+            })
+            $('#sc_class').html('').append(pro_class )
+
+        })
+        // 图1
+
+        function t1(dataset, title) {
+
+
+            //动态设置bar数
+            var serie=[];
+            for(var i = 0;i<dataset['dimensions'].length-1; i++){
+                serie.push({type:'bar'})
+            }
+
+
+
+            var t1Chart = echarts.init(document.getElementById('t1'));
+            var t1option = {
+                title: {
+                    text: title,
+                },
+                grid: {
+                    left: '3%',
+                    right: '4%',
+                    bottom: '3%',
+                    containLabel: true
+                },
+                legend: {},
+                tooltip: {},
+                dataset: dataset,
+                xAxis: {type: 'category'},
+                yAxis: {},
+                // Declare several bar series, each will be mapped
+                // to a column of dataset.source by default.
+                //series: [{type: 'bar'},
+                //    {type: 'bar'}]
+                series: serie
+            };
+            t1Chart.setOption(t1option,true);
+        }
+
+        $.get('/tdb/', {'pro': ''}, function (res) {
+            t1(res.dataset, '通信工程专业各班课表评价情况')
+        })
+
+
+        // 图1操作
+        $('.t1_btn').click(function () {
+            var pro = $('#sc_pro').val();
+            $.get('/tdb/', {'pro': pro}, function (res) {
+                t1(res.dataset,  pro+'专业各班课表评价情况')
+            })
+
+        })
+
+        // 图2
+        function t2(xdata, sdata, title) {
+            var t2Chart = echarts.init(document.getElementById('t2'));
+            var t2option = {
+                title: {
+                    text: title
+                },
+                tooltip: {
+                    trigger: 'axis',
+                    axisPointer: {            // 坐标轴指示器，坐标轴触发有效
+                        type: 'shadow'        // 默认为直线，可选为：'line' | 'shadow'
+                    }
+                },
+                grid: {
+                    left: '3%',
+                    right: '4%',
+                    bottom: '3%',
+                    containLabel: true
+                },
+
+
+
+                //解决x轴展示不全的问题
+                axisLabel:{
+                    interval:0,
+                     formatter:function(value) {
+                         //debugger
+                         var ret = "";//拼接加\n返回的类目项
+                         var maxLength = 5;//每项显示文字个数
+                         var valLength = value.length;//X轴类目项的文字个数
+                         var rowN = Math.ceil(valLength / maxLength); //类目项需要换行的行数
+                         if (rowN > 1)//如果类目项的文字大于3,
+                         {
+                             for (var i = 0; i < rowN; i++) {
+                                 var temp = "";//每次截取的字符串
+                                 var start = i * maxLength;//开始截取的位置
+                                 var end = start + maxLength;//结束截取的位置
+                                 //这里也可以加一个是否是最后一行的判断，但是不加也没有影响，那就不加吧
+                                 temp = value.substring(start, end) + "\n";
+                                 ret += temp; //凭借最终的字符串
+                             }
+                             return ret;
+                         } else {
+                             return value;
+                         }
+                     }
+                },
+
+
+
+               xAxis: [{
+                    data:xdata,
+                    type:'category'
+               }],
+                yAxis: [{
+                    type: 'value'
+                }],
+                series: [{
+                    data: sdata,
+                    type: 'bar'
+                }]
+
+            };
+            t2Chart.setOption(t2option);
+        }
+
+        $.get('/tdb1/', function (res) {
+
+            t2(res.xdata, res.sdata, '第一周通信工程二班全部课程评价情况')
+        })
+
+        $('.t2_btn').click(function () {
+            var wk = $('#sc_wk').val()
+            var pro_class = $('#sc_class').val()
+            $.get('/tdb1/', {'wk': wk, 'pro_class': pro_class}, function (res) {
+                t2(res.xdata, res.sdata, wk+pro_class + '各课程评价情况')
+            })
+        })
+
+    })
+</script>
